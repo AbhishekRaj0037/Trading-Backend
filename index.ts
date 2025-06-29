@@ -46,6 +46,8 @@ app.post('/order', (req: any, res: any) => {
 
 })
 
+//    Manage to Go through code was busy with argent office work :(
+
 function fillOrders(side: string, price: Number, quantity: Number, userId: String) {
     let remainingQty = quantity;
     if (side == "bid") {
