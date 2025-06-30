@@ -14,7 +14,7 @@ interface User {
     balances: Balances;
 };
 
-interface order {
+interface Order {
     userId: String;
     price: Number;
     quantity: Number;
@@ -34,6 +34,9 @@ const users: User[] = [{
     }
 }];
 
+const bids: Order[] = [];
+const asks: Order[] = [];
+
 export const Ticker = "GOOGLE";
 
 app.post('/order', (req: any, res: any) => {
@@ -46,12 +49,36 @@ app.post('/order', (req: any, res: any) => {
 
 })
 
-//    Manage to Go through code was busy with argent office work :(
+function flipBalance(userId1: string, userId2: string, quantity: number, price: number) {
+    let user1 = users.find(x => x.id == userId1);
+    let user2 = users.find(x => x.id == userId2);
+    if (user1 || user2) {
+        return;
+    }
+    user1.balances[Ticker] = user1.balances[Ticker] - quantity;
+    user2.balances[Ticker] = user2.balances[Ticker] + quantity;
+    user1.balances["USD"] = user1.balances["USD"] + (quantity * price);
+    user2.balances["USD"] = user2.balances["USD"] - (quantity * price);
+}
 
 function fillOrders(side: string, price: Number, quantity: Number, userId: String) {
     let remainingQty = quantity;
     if (side == "bid") {
-
+        for (let i = asks.length - 1; i >= 0; i--) {
+            if (asks[i].price > price) {
+                continue;
+            }
+            else if (asks[i].quantity > remainingQty) {
+                asks[i].quantity = asks[i].quantity - remainingQty;
+                flipBalance(asks[i].userId, userId, asks[i].quantity, asks[i].price);
+                return;
+            }
+            else {
+                remainingQty -= asks[i].quantity;
+                flipBalance(asks[i].userId, userId, asks[i].quantity, asks[i].price);
+                asks.splice(i, 1);
+            }
+        }
     }
     else {
 
