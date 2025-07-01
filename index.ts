@@ -46,7 +46,39 @@ app.post('/order', (req: any, res: any) => {
     const userId: String = req.body.userId;
 
     const remainingQty = fillOrders(side, price, quantity, userId);
+    if (remainingQty == 0) {
+        res.json({ filledQuantity: quantity });
+        return;
+    }
+    if (side == "bid") {
+        bids.push({
+            userId: userId,
+            price: price,
+            quantity: quantity
+        });
+        bids.sort((a, b) => a.price < b.price ? -1 : 1);
+    }
+    else {
+        asks.push({
+            userId: userId,
+            price: price,
+            quantity: quantity
+        });
+        asks.sort((a, b) => a.price > b.price ? 1 : -1);
+    }
+    res.json({
+        filledQuantity: quantity - remainingQty,
+    })
+})
 
+
+app.get('/balance/:userId', (req, res) => {
+    let userId = req.params.userId;
+    let user = users.find((x) => x.id == userId);
+    if (!user) {
+        return;
+    }
+    res.json({ balances: user.balances });
 })
 
 function flipBalance(userId1: string, userId2: string, quantity: number, price: number) {
@@ -61,7 +93,7 @@ function flipBalance(userId1: string, userId2: string, quantity: number, price: 
     user2.balances["USD"] = user2.balances["USD"] - (quantity * price);
 }
 
-function fillOrders(side: string, price: Number, quantity: Number, userId: String) {
+function fillOrders(side: string, price: Number, quantity: Number, userId: String) number{
     let remainingQty = quantity;
     if (side == "bid") {
         for (let i = asks.length - 1; i >= 0; i--) {
@@ -81,6 +113,20 @@ function fillOrders(side: string, price: Number, quantity: Number, userId: Strin
         }
     }
     else {
+        if (bids[i].price < price) {
+            continue;
+        }
+        else if (bids[i].quantity > remainingQty) {
+            bids[i].quantity -= remainingQty;
+            flipBalance(userId, bids[i].userId, remainingQty, price);
+            return 0;
+        }
+        else {
+            remainingQty -= bids[i].quantity;
+            flipBalance(userId, bids[i].userId, bids[i].quantity, price);
+            bids.splice(i, 1);
+        }
 
     }
+    return remainingQty;
 }
